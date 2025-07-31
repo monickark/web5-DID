@@ -36,6 +36,9 @@ export class MemStorage implements IStorage {
       ...insertDid,
       id,
       createdAt: new Date(),
+      syncInterval: insertDid.syncInterval || null,
+      keyStored: insertDid.keyStored || null,
+      dwnEndpoints: insertDid.dwnEndpoints || null,
     };
     this.dids.set(id, did);
     
@@ -69,6 +72,9 @@ export class MemStorage implements IStorage {
       ...insertResolution,
       id,
       resolvedAt: new Date(),
+      document: insertResolution.document || null,
+      success: insertResolution.success || null,
+      error: insertResolution.error || null,
     };
     this.didResolutions.set(id, resolution);
     
@@ -101,6 +107,7 @@ export class MemStorage implements IStorage {
       ...insertLog,
       id,
       timestamp: new Date(),
+      data: insertLog.data || null,
     };
     this.systemLogs.push(log);
     

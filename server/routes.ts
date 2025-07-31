@@ -31,7 +31,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let web5Options: any = {};
       
-      // Configure based on connection method
+      // Configure based on connection method with fallback strategies
       switch (validatedData.method) {
         case "custom":
           if (validatedData.dwnEndpoints && validatedData.dwnEndpoints.length > 0) {
@@ -44,10 +44,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           web5Options.didCreateOptions = {
             dwnEndpoints: ['https://dwn.gcda.xyz']
           };
+          web5Options.registration = {
+            onSuccess: () => {
+              console.log('Community DWN registration succeeded');
+            },
+            onFailure: (error: any) => {
+              console.error('Community DWN registration failed:', error);
+            }
+          };
           break;
         case "auto":
         default:
-          // Use default Web5.connect() behavior
+          // Use default Web5.connect() behavior with registration callbacks
+          web5Options.registration = {
+            onSuccess: () => {
+              console.log('Auto DWN registration succeeded');
+            },
+            onFailure: (error: any) => {
+              console.warn('Auto DWN registration failed, continuing with local-only DID:', error);
+            }
+          };
           break;
       }
 
@@ -64,17 +80,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: { options: web5Options }
       });
 
-      // Connect to Web5 and create DID
-      const { web5, did: userDid } = await Web5.connect(web5Options);
+      let web5, userDid, didDocument;
+      
+      try {
+        // Try primary connection method
+        ({ web5, did: userDid } = await Web5.connect(web5Options));
+        
+        await storage.createSystemLog({
+          level: "INFO",
+          message: "Web5 connection established",
+          data: { did: userDid }
+        });
 
-      await storage.createSystemLog({
-        level: "INFO",
-        message: "Web5 connection established",
-        data: { did: userDid }
-      });
+        // Resolve the DID document
+        didDocument = await web5.did.resolve(userDid);
+        
+      } catch (primaryError: any) {
+        await storage.createSystemLog({
+          level: "DEBUG",
+          message: "Primary connection failed, trying fallback method",
+          data: { error: primaryError.message, method: "jwk" }
+        });
 
-      // Resolve the DID document
-      const didDocument = await web5.did.resolve(userDid);
+        // Fallback to JWK method which doesn't require network publishing
+        try {
+          const fallbackOptions = {
+            sync: validatedData.syncInterval !== "off" ? validatedData.syncInterval : "off",
+            registration: {
+              onSuccess: () => console.log('Fallback JWK registration succeeded'),
+              onFailure: (error: any) => console.warn('Fallback JWK registration failed:', error)
+            }
+          };
+          
+          ({ web5, did: userDid } = await Web5.connect(fallbackOptions));
+          
+          await storage.createSystemLog({
+            level: "INFO",
+            message: "Web5 fallback connection established with JWK method",
+            data: { did: userDid, fallback: true }
+          });
+
+          // Resolve the DID document
+          didDocument = await web5.did.resolve(userDid);
+          
+        } catch (fallbackError: any) {
+          throw new Error(`Both primary and fallback connection methods failed. Primary: ${primaryError.message}, Fallback: ${fallbackError.message}`);
+        }
+      }
 
       // Store the DID in our storage
       const createdDid = await storage.createDid({

@@ -19,7 +19,7 @@ interface DIDCreationCardProps {
 
 export function DIDCreationCard({ onDidCreated }: DIDCreationCardProps) {
   const [connectionMethod, setConnectionMethod] = useState<"auto" | "custom" | "community">("auto");
-  const [didMethod, setDidMethod] = useState<"dht" | "jwk" | "ion">("dht");
+  const [didMethod, setDidMethod] = useState<"dht" | "jwk" | "ion">("jwk");
   const [syncInterval, setSyncInterval] = useState<"30s" | "2m" | "5m" | "off">("2m");
   const [keyStored, setKeyStored] = useState(true);
   const [dwnEndpoints, setDwnEndpoints] = useState("");
@@ -82,7 +82,7 @@ export function DIDCreationCard({ onDidCreated }: DIDCreationCardProps) {
 
   const resetForm = () => {
     setConnectionMethod("auto");
-    setDidMethod("dht");
+    setDidMethod("jwk");
     setSyncInterval("2m");
     setKeyStored(true);
     setDwnEndpoints("");
@@ -171,8 +171,8 @@ export function DIDCreationCard({ onDidCreated }: DIDCreationCardProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="dht">did:dht (Recommended)</SelectItem>
-                  <SelectItem value="jwk">did:jwk</SelectItem>
+                  <SelectItem value="jwk">did:jwk (Recommended)</SelectItem>
+                  <SelectItem value="dht">did:dht</SelectItem>
                   <SelectItem value="ion">did:ion</SelectItem>
                 </SelectContent>
               </Select>

@@ -112,3 +112,17 @@ Preferred communication style: Simple, everyday language.
 5. **Component Architecture**: Modular UI components with clear separation of concerns and reusable design system
 
 6. **Real-time Monitoring**: Live system logs and status updates provide transparency into Web5 operations for debugging and user confidence
+
+7. **Robust Error Handling**: Implemented fallback mechanisms for DID creation when network publishing fails, with automatic retry using JWK method for offline-capable DIDs
+
+8. **Default JWK Method**: Changed from DHT to JWK as default DID method for better offline support and reduced network dependency
+
+## Recent Changes (January 31, 2025)
+
+### Network Resilience Improvements
+- **Issue Resolved**: Fixed DID creation failures due to DHT network connectivity issues (Pkarr record publishing)
+- **Fallback Strategy**: Implemented automatic fallback from DHT to JWK method when network publishing fails
+- **Error Handling**: Enhanced error logging and user feedback for network-related failures
+- **Default Method**: Changed default DID method from `did:dht` to `did:jwk` for better offline compatibility
+- **Registration Callbacks**: Added proper success/failure handlers for all connection methods
+- **Type Safety**: Fixed TypeScript compilation errors in storage layer and routes

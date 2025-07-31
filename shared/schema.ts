@@ -58,7 +58,7 @@ export type SystemLog = typeof systemLogs.$inferSelect;
 // Web5 specific types
 export const didCreationRequestSchema = z.object({
   method: z.enum(["auto", "custom", "community"]),
-  didMethod: z.enum(["dht", "jwk", "ion"]).default("dht"),
+  didMethod: z.enum(["dht", "jwk", "ion"]).default("jwk"), // Changed default to jwk for better offline support
   syncInterval: z.enum(["30s", "2m", "5m", "off"]).default("2m"),
   keyStored: z.boolean().default(true),
   dwnEndpoints: z.array(z.string().url()).optional(),
