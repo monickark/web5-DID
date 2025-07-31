@@ -5,11 +5,18 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-if (!process.env.DATABASE_URL) {
+if (!process.env.SUPABASE_URL) {
   throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+    "SUPABASE_URL must be set. Did you forget to add Supabase credentials?",
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Construct PostgreSQL connection string from Supabase URL
+const supabaseUrl = new URL(process.env.SUPABASE_URL);
+const connectionString = `postgresql://postgres.${supabaseUrl.hostname.split('.')[0]}:[YOUR-PASSWORD]@${supabaseUrl.hostname}:5432/postgres`;
+
+// Use DATABASE_URL if available (from Supabase connection string), otherwise construct from SUPABASE_URL
+const dbUrl = process.env.DATABASE_URL || connectionString;
+
+export const pool = new Pool({ connectionString: dbUrl });
 export const db = drizzle({ client: pool, schema });

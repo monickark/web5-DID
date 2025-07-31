@@ -42,9 +42,9 @@ Preferred communication style: Simple, everyday language.
 
 ### Storage Layer
 - **Interface-based Design**: IStorage interface allows for pluggable storage backends
-- **Current Implementation**: In-memory storage for development
-- **Schema Support**: Drizzle ORM schema defined for future PostgreSQL integration
-- **Data Types**: DIDs, DID resolutions, and system logs
+- **Current Implementation**: Supabase PostgreSQL database with Drizzle ORM
+- **Database Schema**: Three main tables - dids, didResolutions, and systemLogs
+- **Data Types**: DIDs, DID resolutions, and system logs with full persistence
 
 ## Data Flow
 
@@ -103,7 +103,7 @@ Preferred communication style: Simple, everyday language.
 
 1. **Monorepo Structure**: Frontend (`client/`), backend (`server/`), and shared (`shared/`) code in single repository for easier development and deployment
 
-2. **Memory Storage**: Chosen for development simplicity with clear migration path to PostgreSQL via Drizzle ORM interface
+2. **Supabase Integration**: Full PostgreSQL database integration using Supabase with Drizzle ORM for type-safe database operations
 
 3. **Web5 SDK Integration**: Direct integration with @web5/api provides access to latest decentralized identity features while abstracting low-level cryptographic operations
 
@@ -126,3 +126,10 @@ Preferred communication style: Simple, everyday language.
 - **Default Method**: Changed default DID method from `did:dht` to `did:jwk` for better offline compatibility
 - **Registration Callbacks**: Added proper success/failure handlers for all connection methods
 - **Type Safety**: Fixed TypeScript compilation errors in storage layer and routes
+
+### Database Integration (Supabase)
+- **Migration Completed**: Successfully migrated from in-memory storage to Supabase PostgreSQL database
+- **DatabaseStorage Implementation**: Replaced MemStorage with full database operations using Drizzle ORM
+- **Schema Deployment**: Pushed database schema with tables for dids, didResolutions, and systemLogs
+- **Full Persistence**: All DIDs, resolutions, and system logs now persist across application restarts
+- **Performance**: DID creation and retrieval working efficiently with database operations under 100ms

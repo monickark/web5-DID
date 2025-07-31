@@ -21,115 +21,96 @@ export interface IStorage {
   clearSystemLogs(): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private dids: Map<string, Did>;
-  private didResolutions: Map<string, DidResolution>;
-  private systemLogs: SystemLog[];
-
-  constructor() {
-    this.dids = new Map();
-    this.didResolutions = new Map();
-    this.systemLogs = [];
-  }
-
+export class DatabaseStorage implements IStorage {
   async createDid(insertDid: InsertDid & { did: string; document: any }): Promise<Did> {
-    const id = randomUUID();
-    const did: Did = {
-      ...insertDid,
-      id,
-      createdAt: new Date(),
-      syncInterval: insertDid.syncInterval || null,
-      keyStored: insertDid.keyStored || null,
-      dwnEndpoints: insertDid.dwnEndpoints || null,
-    };
-    this.dids.set(id, did);
-    
+    const [result] = await db
+      .insert(dids)
+      .values({
+        did: insertDid.did,
+        method: insertDid.method,
+        document: insertDid.document,
+        keyStored: insertDid.keyStored || true,
+        syncInterval: insertDid.syncInterval || null,
+        dwnEndpoints: insertDid.dwnEndpoints || null,
+      })
+      .returning();
+
     // Log the creation
     await this.createSystemLog({
       level: "SUCCESS",
       message: `DID created: ${insertDid.did}`,
-      data: { didId: id, method: insertDid.method }
+      data: { didId: result.id, method: insertDid.method }
     });
-    
-    return did;
+
+    return result;
   }
 
   async getDid(id: string): Promise<Did | undefined> {
-    return this.dids.get(id);
+    const [result] = await db.select().from(dids).where(eq(dids.id, id));
+    return result || undefined;
   }
 
   async getDidByIdentifier(did: string): Promise<Did | undefined> {
-    return Array.from(this.dids.values()).find(d => d.did === did);
+    const [result] = await db.select().from(dids).where(eq(dids.did, did));
+    return result || undefined;
   }
 
   async getAllDids(): Promise<Did[]> {
-    return Array.from(this.dids.values()).sort((a, b) => 
-      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
-    );
+    return await db.select().from(dids).orderBy(desc(dids.createdAt));
   }
 
   async createDidResolution(insertResolution: InsertDidResolution & { document?: any; success: boolean; error?: string }): Promise<DidResolution> {
-    const id = randomUUID();
-    const resolution: DidResolution = {
-      ...insertResolution,
-      id,
-      resolvedAt: new Date(),
-      document: insertResolution.document || null,
-      success: insertResolution.success || null,
-      error: insertResolution.error || null,
-    };
-    this.didResolutions.set(id, resolution);
-    
+    const [result] = await db
+      .insert(didResolutions)
+      .values({
+        did: insertResolution.did,
+        document: insertResolution.document || null,
+        success: insertResolution.success,
+        error: insertResolution.error || null,
+      })
+      .returning();
+
     // Log the resolution
     await this.createSystemLog({
-      level: resolution.success ? "SUCCESS" : "ERROR",
-      message: resolution.success 
+      level: result.success ? "SUCCESS" : "ERROR",
+      message: result.success 
         ? `DID resolved: ${insertResolution.did}` 
         : `DID resolution failed: ${insertResolution.did}`,
-      data: { resolutionId: id, error: insertResolution.error }
+      data: { resolutionId: result.id, error: insertResolution.error }
     });
-    
-    return resolution;
+
+    return result;
   }
 
   async getDidResolution(did: string): Promise<DidResolution | undefined> {
-    return Array.from(this.didResolutions.values())
-      .find(r => r.did === did);
+    const [result] = await db.select().from(didResolutions).where(eq(didResolutions.did, did));
+    return result || undefined;
   }
 
   async getAllDidResolutions(): Promise<DidResolution[]> {
-    return Array.from(this.didResolutions.values()).sort((a, b) => 
-      new Date(b.resolvedAt!).getTime() - new Date(a.resolvedAt!).getTime()
-    );
+    return await db.select().from(didResolutions).orderBy(desc(didResolutions.resolvedAt));
   }
 
   async createSystemLog(insertLog: InsertSystemLog): Promise<SystemLog> {
-    const id = randomUUID();
-    const log: SystemLog = {
-      ...insertLog,
-      id,
-      timestamp: new Date(),
-      data: insertLog.data || null,
-    };
-    this.systemLogs.push(log);
-    
-    // Keep only last 1000 logs
-    if (this.systemLogs.length > 1000) {
-      this.systemLogs = this.systemLogs.slice(-1000);
-    }
-    
-    return log;
+    const [result] = await db
+      .insert(systemLogs)
+      .values({
+        level: insertLog.level,
+        message: insertLog.message,
+        data: insertLog.data || null,
+      })
+      .returning();
+
+    return result;
   }
 
   async getSystemLogs(limit: number = 100): Promise<SystemLog[]> {
-    return this.systemLogs
-      .sort((a, b) => new Date(b.timestamp!).getTime() - new Date(a.timestamp!).getTime())
-      .slice(0, limit);
+    return await db.select().from(systemLogs).orderBy(desc(systemLogs.timestamp)).limit(limit);
   }
 
   async clearSystemLogs(): Promise<void> {
-    this.systemLogs = [];
+    await db.delete(systemLogs);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
