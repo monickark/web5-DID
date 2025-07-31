@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { didCreationRequestSchema, insertDidResolutionSchema } from "@shared/schema";
 import { Web5 } from '@web5/api';
+import { DidJwk } from '@web5/dids';
 import { webcrypto } from "node:crypto";
 
 // Polyfill for Node.js crypto
@@ -82,18 +83,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let web5, userDid, didDocument;
       
+      // Use direct DID creation approach for better reliability
       try {
-        // Try primary connection method
-        ({ web5, did: userDid } = await Web5.connect(web5Options));
-        
         await storage.createSystemLog({
-          level: "INFO",
-          message: "Web5 connection established",
-          data: { did: userDid }
+          level: "DEBUG",
+          message: "Creating DID using direct method approach",
+          data: { method: validatedData.didMethod }
         });
 
-        // Resolve the DID document
-        didDocument = await web5.did.resolve(userDid);
+        if (validatedData.didMethod === "jwk") {
+          // Create JWK DID directly - most reliable method
+          await storage.createSystemLog({
+            level: "DEBUG",
+            message: "Creating JWK DID directly (no network required)"
+          });
+
+          const didJwk = await DidJwk.create();
+          userDid = didJwk.uri;
+          didDocument = didJwk.document;
+          
+          await storage.createSystemLog({
+            level: "SUCCESS",
+            message: "JWK DID created successfully",
+            data: { did: userDid }
+          });
+
+        } else {
+          // Fallback to Web5.connect for DHT/ION methods
+          await storage.createSystemLog({
+            level: "DEBUG",
+            message: "Using Web5.connect for DHT/ION method"
+          });
+
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Connection timeout after 15 seconds')), 15000)
+          );
+          
+          const connectPromise = Web5.connect({ sync: "off" });
+          const result = await Promise.race([connectPromise, timeoutPromise]) as any;
+          
+          web5 = result.web5;
+          userDid = result.did;
+          didDocument = await web5.did.resolve(userDid);
+          
+          await storage.createSystemLog({
+            level: "SUCCESS",
+            message: "Web5 connection method successful",
+            data: { did: userDid }
+          });
+        }
         
       } catch (primaryError: any) {
         await storage.createSystemLog({
