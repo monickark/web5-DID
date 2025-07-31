@@ -1,5 +1,7 @@
-import { type Did, type InsertDid, type DidResolution, type InsertDidResolution, type SystemLog, type InsertSystemLog } from "@shared/schema";
+import { type Did, type InsertDid, type DidResolution, type InsertDidResolution, type SystemLog, type InsertSystemLog, dids, didResolutions, systemLogs } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   // DID operations
